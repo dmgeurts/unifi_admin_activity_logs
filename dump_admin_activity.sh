@@ -14,6 +14,7 @@ AA_log_file="$AA_log_dir/unifi_admin_activity.log"
 ## Mongo query variables
 BatchSize=2000
 timespan=10
+state="good"
 
 # Test if log folder exists and if the file is writeable
 if [ ! -d "$AA_log_dir" ]; then
@@ -49,13 +50,19 @@ function rwdata {
     if [ ! -z "$output" ] && echo "$output" | jq -e >/dev/null 2>&1; then
       # Only write valid json to file
       echo "$output" >> "$AA_log_file"
+      if [[ "$state" != "good" ]]; then
+        echo "[$(date)] Admin Activity log entry read from MongoDB and written to file."
+        state="good"
+      fi
     elif [ ! -z "$output" ]; then
       # Log invalid JSON
-      echo "Ignoring invalid JSON: $output"
+      echo "[$(date)] Ignoring invalid JSON: $output"
+      state="bad"
     fi
   else
     # Log missing MongoDB port
-    echo "No service found listening on: $DB_host:$DB_port"
+    echo "[$(date)] No service found listening on: $DB_host:$DB_port"
+    state="bad"
   fi
 }
 
