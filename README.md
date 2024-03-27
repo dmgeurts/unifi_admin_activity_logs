@@ -18,3 +18,7 @@ This script writes new admin activity logs found in the MongoDB collection `admi
 The log file duplicates the admin logs from the MongoDB database so a short log-rotation is advised to keep disk usage to a minimum.
 
 The log file can be monitored using your favourite SIEM log-file watcher, some examples are Filebeat and Elastic Agent.
+
+### Unifi doesn't log failed login attempts
+
+The only solution I know right now (Q1 2024) is to front the Unifi UI with a reverse proxy and log the web requests. These can then be ingested by the same SIEM and compared to the admin activity logs reported by the Unifi Controller. This way HTTP error codes returned by the controller are logged. The client's real IP address must be parsed to the controller, to maintain visibility of the source IP address in the admin activity logs.
