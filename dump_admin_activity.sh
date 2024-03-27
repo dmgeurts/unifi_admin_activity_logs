@@ -39,8 +39,22 @@ elif [ ! -w "$AA_log_file" ]; then
 fi
 
 function rwdata {
-  mongo $DB_host:$DB_port/$DB --quiet --eval 'DBQuery.shellBatchSize = '"$BatchSize"'; db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0})' | \
-    sed 's/\(NumberLong([[:punct:]]\?\)\([[:digit:]]*\)\([[:punct:]]\?)\)/\"\2\"/' >> "$AA_log_file"
+  if nc -z $DB_host $DB_port; then
+    output=$(mongo $DB_host:$DB_port/$DB --quiet --eval 'DBQuery.shellBatchSize = '"$BatchSize"'; db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0})' | \
+      sed 's/\(NumberLong([[:punct:]]\?\)\([[:digit:]]*\)\([[:punct:]]\?)\)/\"\2\"/' | jq -s -c 'sort_by(.time) | .[]')
+      # "NumberLong" needs to be removed.
+      # It can happen that MongoDB spits out the records in the wrong order, sorting by time avoids repeat reads of logged records.
+    if [ ! -z "$output" ] && echo "$output" | jq -e >/dev/null 2>&1; then
+      # Only write valid json to file
+      echo "$output" >> "$AA_log_file"
+    elif [ ! -z "$output" ]; then
+      # Log invalid JSON
+      echo "Ignoring invalid JSON: $output"
+    fi
+  else
+    # Log missing MongoDB port
+    echo "No service found listening on: $DB_host:$DB_port"
+  fi
 }
 
 function last_time {
@@ -50,9 +64,8 @@ function last_time {
   [ -z "$last_log" ] && echo $(date --date "-$timespan sec" +%s)000 || echo "$last_log"
 }
 
-time="$(last_time)"
-while rwdata
+while time="$(last_time)"
 do
-  time="$(last_time)"
+  rwdata
   sleep $timespan
 done
