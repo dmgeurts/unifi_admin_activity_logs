@@ -1,5 +1,7 @@
 #!/bin/bash
 # Export last 10 seconds of Unifi Admin activity logs to file in JSON format.
+# Author: Djerk Geurts <djerk@maizymoo.com>
+# Source: https://github.com/dmgeurts/unifi_admin_activity_logs
 
 ## System defaults
 DB="ace"
