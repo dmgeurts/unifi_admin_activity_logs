@@ -21,4 +21,55 @@ The log file can be monitored using your favourite SIEM log-file watcher, some e
 
 ### Unifi doesn't log failed login attempts
 
-The only solution I know right now (Q1 2024) is to front the Unifi UI with a reverse proxy and log the web requests. These can then be ingested by the same SIEM and compared to the admin activity logs reported by the Unifi Controller. This way HTTP error codes returned by the controller are logged. The client's real IP address must be parsed to the controller, to maintain visibility of the source IP address in the admin activity logs.
+The only solution I know of now (Q1 2024) is to front the Unifi UI with a reverse proxy and log the web requests. These can then be ingested by the same SIEM and compared to the admin activity logs reported by the Unifi Controller. This way HTTP error codes returned by the controller are logged. The client's real IP address must be parsed to the controller, to maintain visibility of the source IP address in the admin activity logs.
+
+## Usage
+
+Ensure to make the script executable after copying it to the desired location: 
+
+```bash
+sudo chmod +x /usr/local/bin/dump_admin_activity.sh
+```
+
+### Log file location
+
+The script can create the log folder, but if running the script as non-root (advised) the user must either be a member of the syslog group or have sudo rights to create a folder under `/var/log`. Note that the name and location of the log folder are configurable in the script.
+
+To create the log folder manually: 
+
+```bash
+sudo mkdir /var/log/unifi_admin_activity
+sudo chown unifi:unifi /var/log/unifi_admin_activity
+sudo chmod 750 /var/log/unifi_admin_activity
+```
+
+Consider the rights your log file watcher/scraper needs to read the log file, and adjust ownerships and privileges accordingly.
+
+### Systemd service
+
+Create the systemd service file, then reload the systemd daemon, enable and start the service: 
+
+```bash
+sudo vi /etc/systemd/system/unifi-admlog-export.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now unifi-admlog-export.service
+```
+
+`stdout` of the service is logged to the journal, to tail the logs: 
+
+```bash
+sudo journalctl -fu unifi-admlog-export
+```
+
+### Manual test run
+
+```bash
+sudo -u unifi /usr/local/bin/dump_admin_activity.sh
+```
+
+It will keep running until you escape out of the while loop with `ctrl-c`.
+
+## log rotation
+
+Without log management the data duplication between the MongoDB ace database and the log file will consume disk space faster than without. Hence the log files don't need to be kept around for long, the advised log-rotation removes log files older than a few days.
+
