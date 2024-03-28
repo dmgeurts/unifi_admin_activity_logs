@@ -28,7 +28,8 @@ if [ ! -d "$AA_log_dir" ]; then
   else
     echo "ERROR: Failed to create: $AA_log_dir"
     if [[ $EUID > 0 ]]; then
-      echo "WARNING: Ensure user $(whoami) is a member of the syslog group or has sudo rights to create $AA_log_dir"
+      echo "WARNING: Ensure user $(whoami) is a member of the syslog group or has sudo rights to create"
+      echo "         the log folder. Alternatively, manually create $AA_log_dir"
     fi
     exit 0
   fi
