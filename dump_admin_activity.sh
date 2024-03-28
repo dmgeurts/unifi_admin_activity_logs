@@ -25,6 +25,7 @@ if client="$(which mongosh)"; then
 elif client="$(which mongo)"; then
   echo "[$(date)] Old MongoDB client found, pre MongoDB 5.0"
   jq_opt="-s"
+  mongo_opt="DBQuery.shellBatchSize = $BatchSize;"
 else
   echo "ERROR: No MongoDB Shell or client found."
   exit 0
@@ -64,9 +65,9 @@ fi
 
 function rwdata {
   if nc -z $DB_host $DB_port; then
-    output=$("$client" $DB_host:$DB_port/$DB --quiet --eval 'db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0}).toArray()' | \
+    output=$("$client" $DB_host:$DB_port/$DB --quiet --eval "$mongo_opt"'db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0}).toArray()' | \
       sed 's/\(\(Number\)\?Long([[:punct:]]\{1,2\}\)\([[:digit:]]*\)\([[:punct:]]\{1,2\})\)/\3/' | \
-      sed -r 's/\ ([a-zA-Z_]+):/\ "\1":/g' | sed "s/'/\"/g" | jq "$jq_opt" -c 'sort_by(.time) | .[]')
+      sed -r 's/\ ([a-zA-Z_]+):/\ "\1":/g' | sed "s/'/\"/g" | jq $jq_opt -c 'sort_by(.time) | .[]')
       # "NumberLong" needs to be removed.
       # It can happen that MongoDB spits out the records in the wrong order, sorting by time avoids repeat reads of logged records.
       # Since mongosh the output is no longer properly quoted
