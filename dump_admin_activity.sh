@@ -10,6 +10,7 @@ DB_host="localhost"
 DB_collection="admin_activity_log"
 AA_log_dir="/var/log/unifi_admin_activity/"
 AA_log_file="$AA_log_dir/unifi_admin_activity.log"
+service_user="unifi" # unifi suggested, but root or $(whoami) are also possibilities
 
 ## Mongo query variables
 BatchSize=2000
@@ -21,12 +22,18 @@ if [ ! -d "$AA_log_dir" ]; then
   echo "ERROR: $AA_log_dir does not exist."
   if mkdir "$AA_log_dir"; then
     echo "Log folder created: $AA_log_dir"
+  # Try with sudo if it didn't work without
+  elif sudo mkdir "$AA_log_dir"; then
+    sudo chown $service_user:$service_user "$AA_log_dir"
   else
     echo "ERROR: Failed to create: $AA_log_dir"
+    if [[ $EUID > 0 ]]; then
+      echo "WARNING: Ensure user $(whoami) is a member of the syslog group or has sudo rights to create $AA_log_dir"
+    fi
     exit 0
   fi
 elif [ ! -w "$AA_log_dir" ]; then
-  echo "ERROR: Can't write to log folder, please fix write permissions for user `whoami` on: $AA_log_dir"
+  echo "ERROR: Can't write to log folder, please fix write permissions for user $(whoami) on: $AA_log_dir"
   exit 0
 elif [ ! -w "$AA_log_file" ]; then
   if [ ! -f "$AA_log_file" ]; then
