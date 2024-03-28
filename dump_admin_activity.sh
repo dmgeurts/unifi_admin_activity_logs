@@ -13,9 +13,22 @@ AA_log_file="$AA_log_dir/unifi_admin_activity.log"
 service_user="unifi" # unifi suggested, but root or $(whoami) are also possibilities
 
 ## Mongo query variables
-BatchSize=2000
 timespan=10
+BatchSize=2000
+mongo_opt=""
 state="good"
+jq_opt=""
+
+# Test if mongo or mongosh are installed
+if client="$(which mongosh)"; then
+  echo "[$(date)] MongoDB Shell found."
+elif client="$(which mongo)"; then
+  echo "[$(date)] Old MongoDB client found, pre MongoDB 5.0"
+  jq_opt="-s"
+else
+  echo "ERROR: No MongoDB Shell or client found."
+  exit 0
+fi
 
 # Test if log folder exists and if the file is writeable
 if [ ! -d "$AA_log_dir" ]; then
@@ -51,10 +64,12 @@ fi
 
 function rwdata {
   if nc -z $DB_host $DB_port; then
-    output=$(mongo $DB_host:$DB_port/$DB --quiet --eval 'DBQuery.shellBatchSize = '"$BatchSize"'; db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0})' | \
-      sed 's/\(NumberLong([[:punct:]]\?\)\([[:digit:]]*\)\([[:punct:]]\?)\)/\"\2\"/' | jq -s -c 'sort_by(.time) | .[]')
+    output=$("$client" $DB_host:$DB_port/$DB --quiet --eval 'db.'"$DB_collection"'.find({"time": {"$gt": '"$time"'}},{"_id":0}).toArray()' | \
+      sed 's/\(\(Number\)\?Long([[:punct:]]\{1,2\}\)\([[:digit:]]*\)\([[:punct:]]\{1,2\})\)/\3/' | \
+      sed -r 's/\ ([a-zA-Z_]+):/\ "\1":/g' | sed "s/'/\"/g" | jq "$jq_opt" -c 'sort_by(.time) | .[]')
       # "NumberLong" needs to be removed.
       # It can happen that MongoDB spits out the records in the wrong order, sorting by time avoids repeat reads of logged records.
+      # Since mongosh the output is no longer properly quoted
     if [ ! -z "$output" ] && echo "$output" | jq -e >/dev/null 2>&1; then
       # Only write valid json to file
       echo "$output" >> "$AA_log_file"
