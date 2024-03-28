@@ -1,0 +1,16 @@
+[Unit]
+Description=Unifi Admin Activity Log exporter
+Documentation=https://github.com/dmgeurts/unifi_admin_activity_logs/
+After=network.target
+
+[Service]
+PIDFile=/run/unifi-admlog-export/pid
+User=unifi
+Group=unifi
+WorkingDirectory=/var/log/unifi_admin_activity
+ExecStart=/usr/local/bin/dump_admin_activity.sh
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
