@@ -73,3 +73,31 @@ It will keep running until you escape out of the while loop with `ctrl-c`.
 
 Without log management the data duplication between the MongoDB ace database and the log file will consume disk space faster than without. Hence the log files don't need to be kept around for long, the advised log-rotation removes log files older than a few days.
 
+`sudo vi /etc/logrotate.d/unifi_admin_activity` 
+
+```text
+/var/log/unifi_admin_activity/*.log {
+    rotate 3
+    daily
+    create 640 unifi unifi
+    missingok
+    notifempty
+}
+```
+
+## Reverse proxy
+
+⚠️ When using a reverse proxy local to the Unifi Controller, one must ensure not to forward sessions to localhost as these are excluded from the Admin Activity log.
+
+Another requirement is to pass the client real-ip address, else the Controller will log the IP address of the reverse proxy. This Nginx vhost `proxy_pass` snippet works for me, ymmv: 
+
+```text
+    # Redirect to Unifi Controller
+    location / {
+        proxy_pass       https://[public IP]:8443;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    }
+```
